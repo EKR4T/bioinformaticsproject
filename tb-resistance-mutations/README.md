@@ -37,6 +37,7 @@ Full results are in [docs/03_results_summary.md](docs/03_results_summary.md).
 | `docs/02_data_dictionary.md` | Description of every file and variable |
 | `docs/03_results_summary.md` | Results and conclusions in plain text, for the presentation |
 | `docs/04_reflection_guide.md` | Prompts for the individual one-page reflection |
+| `docs/05_team_roles.md` | Who led each stage, and who presents which slides |
 | `docs/Bioinformatics Project Brief.pdf` | The project brief |
 | `requirements.txt` | Python packages (all preinstalled in Google Colab) |
 
@@ -45,8 +46,8 @@ Full results are in [docs/03_results_summary.md](docs/03_results_summary.md).
 **Google Colab**
 
 1. Open `TB_resistance_mutations.ipynb` in Colab (File → Open notebook → GitHub, paste this repository's URL).
-2. In the Stage 2 code cell, set `REPO_URL` to this repository's GitHub URL. The cell clones the
-   repository to get the data files.
+2. Nothing to edit: the Stage 2 code cell clones this repository
+   (`https://github.com/EKR4T/bioinformaticsproject`) to get the data files.
 3. Runtime → Run all. It takes about 6–8 minutes, most of it in the machine-learning stage.
 
 **Locally**
@@ -75,12 +76,14 @@ The data contain bacterial genomes and laboratory results only, with no patient 
 
 ## Team
 
-| Admission no. | Name |
-|---|---|
-| 144861 | Kiome Ian Mutuma |
-| 103023 | Mbai Njeke Silver |
-| 169275 | Louis Muiyuro Karanja |
-| 134976 | Kipngetich Emmanuel Keter |
-| 158716 | Mwangi Mary Queenvine Muthoni |
-| 167612 | James Trevor |
-| 146414 | Wesly Ryan Mugele |
+| Admission no. | Name | Lead role |
+|---|---|---|
+| 134976 | Kipngetich Emmanuel Keter | Coordination, GitHub and Colab setup; Stage 7 machine learning |
+| 167612 | James Trevor | Stage 1 question and objectives; Stage 8 conclusions |
+| 144861 | Kiome Ian Mutuma | Stage 2 data acquisition and data dictionary |
+| 169275 | Louis Muiyuro Karanja | Stage 3 preprocessing and quality control |
+| 158716 | Mwangi Mary Queenvine Muthoni | Stage 4 exploratory data analysis; slides |
+| 146414 | Wesly Ryan Mugele | Stage 5 core association analysis |
+| 103023 | Mbai Njeke Silver | Stage 6 biological interpretation |
+
+Details of each role are in [docs/05_team_roles.md](docs/05_team_roles.md).
