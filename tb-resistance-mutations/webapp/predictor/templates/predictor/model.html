@@ -1,0 +1,52 @@
+{% extends "predictor/base.html" %}{% load humanize %}
+{% block title %}Model performance · TB Resistance Predictor{% endblock %}
+{% block content %}
+<section class="stack">
+  <span class="eyebrow">Model card</span>
+  <h1>How well the model predicts each drug</h1>
+  <p class="muted">One L2-regularised logistic regression per drug (C = 1, class-balanced weights), using {{ n_features|intcomma }} mutation features: every non-synonymous, promoter, rRNA or indel mutation in the 43 candidate genes carried by at least 5 isolates. All scores below are out-of-sample.</p>
+</section>
+
+<section class="panel">
+  <h2>Cross-validated performance</h2>
+  <div class="tscroll"><table>
+    <thead><tr>
+      <th>Drug</th><th class="num">Isolates</th><th class="num">Resistant</th>
+      <th class="num">ROC AUC</th><th class="num">Balanced accuracy</th><th class="num">Sensitivity</th><th class="num">Specificity</th>
+      <th class="num">Unseen labs</th><th>Reliability</th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><b>{{ r.name }}</b> <span class="muted mono">{{ r.drug }}</span></td>
+        <td class="num">{{ r.n_isolates|intcomma }}</td>
+        <td class="num">{{ r.n_resistant|intcomma }}</td>
+        <td class="num">{{ r.auc|floatformat:2 }}</td>
+        <td class="num">{{ r.balanced_accuracy|floatformat:2 }}</td>
+        <td class="num">{{ r.sensitivity|floatformat:2 }}</td>
+        <td class="num">{{ r.specificity|floatformat:2 }}</td>
+        <td class="num">{{ r.unseen_lab|floatformat:2 }}</td>
+        <td>{% if r.reliable %}<span class="pill ok">Good</span>{% else %}<span class="pill warn">Low</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="muted" style="font-size:13px">Columns 4–7: 5-fold stratified cross-validation. "Unseen labs": balanced accuracy when whole CRyPTIC laboratories are held out (leave-laboratory-out cross-validation). "Good" means AUC ≥ {{ reliable_auc }} and unseen-lab balanced accuracy ≥ {{ reliable_lab }}.</p>
+</section>
+
+<section class="panel">
+  <h2>Why balanced accuracy, not accuracy</h2>
+  <p>For most drugs resistant isolates are rare (under 2% for the four newer drugs). A model that always says "susceptible" would score 98–99% plain accuracy but has a balanced accuracy of 0.50. Balanced accuracy is the mean of sensitivity and specificity, so it cannot be inflated that way.</p>
+</section>
+
+<section class="panel">
+  <h2>Limits</h2>
+  <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px">
+    <li>Trained on CRyPTIC isolates, which over-sample drug-resistant TB; not validated on Kenyan or other African isolates.</li>
+    <li>Part of the signal for ethambutol, the fluoroquinolones and bedaquiline is co-resistance: mutations such as <i>katG</i> S315T mark MDR strains.</li>
+    <li>Mutations carried by fewer than 5 isolates, synonymous mutations and genes outside the 43 candidates are ignored.</li>
+    <li>Not a diagnostic. Use laboratory drug-susceptibility testing for treatment decisions.</li>
+  </ul>
+  <p class="muted" style="font-size:13px">Model exported {{ model.trained_at }} with scikit-learn {{ model.sklearn_version }} by <code>scripts/export_model.py</code>.</p>
+</section>
+{% endblock %}

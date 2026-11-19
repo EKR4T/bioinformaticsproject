@@ -1,0 +1,98 @@
+{% extends "predictor/base.html" %}{% load humanize %}
+{% block style %}
+form .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+textarea { width: 100%; min-height: 96px; resize: vertical; font: 14px/1.5 var(--f-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+input[type=text] { flex: 1 1 220px; min-width: 0; font: 14px var(--f-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+button, .btn { font: 600 14px var(--f-body); border-radius: 8px; padding: 9px 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-decoration: none; display: inline-block; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.examples { display: flex; flex-wrap: wrap; gap: 8px; }
+.examples a { font-size: 13px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 99px; text-decoration: none; color: var(--ink-2); background: var(--surface); }
+.examples a:hover { border-color: var(--accent); color: var(--accent); }
+.summary { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; }
+.summary b { font-family: var(--f-display); font-size: 26px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--f-mono); font-size: 12.5px; padding: 2px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--ink); }
+.chip.bad { background: var(--warn-soft); }
+.prob { display: flex; align-items: center; gap: 10px; min-width: 170px; }
+.prob .track { flex: 1; height: 8px; background: var(--bar-track); border-radius: 4px; position: relative; }
+.prob .fill { height: 8px; border-radius: 4px; background: var(--bar); }
+.prob .cut { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
+.prob span { width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.why { font-size: 12.5px; color: var(--ink-2); }
+.why .w { font-family: var(--f-mono); }
+.why .other { color: var(--muted); }
+td.drug b { font-weight: 600; }
+td.drug span { display: block; font-size: 12px; color: var(--muted); font-family: var(--f-mono); }
+{% endblock %}
+{% block content %}
+<section class="stack">
+  <span class="eyebrow">Mycobacterium tuberculosis · 13 antibiotics</span>
+  <h1>Predict drug resistance from <i>M. tuberculosis</i> mutations</h1>
+  <p class="muted">Enter the mutations an isolate carries in the candidate resistance genes. The model returns a resistant (R) or susceptible (S) call for each of 13 drugs, trained on {{ n_isolates|intcomma }} clinical isolates from the CRyPTIC consortium.</p>
+</section>
+
+<section class="panel">
+  <form method="get" action="/" class="stack" id="f">
+    <label for="mutations"><h2>Mutations</h2></label>
+    <p class="muted">Write each as <code>gene_mutation</code> or <code>gene mutation</code>, separated by commas or new lines. Examples: <code>katG_S315T</code>, <code>rpoB S450L</code>, <code>fabG1_c-15t</code>, <code>rrs_a1401g</code>.</p>
+    <textarea id="mutations" name="mutations" spellcheck="false" placeholder="katG_S315T, rpoB_S450L">{{ text }}</textarea>
+    <div class="row">
+      <input type="text" id="picker" list="featlist" placeholder="Search the {{ n_features|intcomma }} mutations the model knows…" aria-label="Search mutations">
+      <button type="button" id="add">Add</button>
+      <button type="submit" class="primary">Predict resistance</button>
+    </div>
+    <datalist id="featlist">{% for f in features %}<option value="{{ f.id }}">{{ f.effect }} · {{ f.carriers }} isolates</option>{% endfor %}</datalist>
+  </form>
+  <div class="stack" style="gap:8px">
+    <span class="muted" style="font-size:13px">Try an example:</span>
+    <div class="examples">{% for e in examples %}<a href="/?mutations={{ e.query|urlencode }}">{{ e.label }}</a>{% endfor %}</div>
+  </div>
+</section>
+
+{% if results %}
+<section class="panel">
+  <div class="summary">
+    <h2>Predictions</h2>
+    <span><b>{{ n_resistant }}</b> <span class="muted">of {{ n_reliable }} reliably predicted drugs called resistant</span></span>
+  </div>
+  {% if known %}
+  <div class="stack" style="gap:6px"><span class="muted" style="font-size:13px">Used by the model ({{ known|length }}):</span>
+    <div class="chips">{% for k in known %}<span class="chip">{{ k }}</span>{% endfor %}</div></div>
+  {% else %}
+  <p class="muted">No recognised mutations, so every prediction is the model's baseline for an isolate with no resistance-associated mutation.</p>
+  {% endif %}
+  {% if unknown %}
+  <div class="stack" style="gap:6px"><span class="muted" style="font-size:13px">Ignored, not in the model ({{ unknown|length }}). The model only uses non-synonymous, promoter, rRNA and indel mutations seen in at least 5 isolates:</span>
+    <div class="chips">{% for u in unknown %}<span class="chip bad">{{ u }}</span>{% endfor %}</div></div>
+  {% endif %}
+  <div class="tscroll"><table>
+    <thead><tr><th>Drug</th><th>Call</th><th>Probability resistant</th><th>Mutations driving the call</th><th>Model reliability</th></tr></thead>
+    <tbody>
+    {% for r in results %}
+      <tr>
+        <td class="drug"><b>{{ r.name }}</b><span>{{ r.drug }}</span></td>
+        <td>{% if not r.reliable %}<span class="pill warn" title="Raw model output: {{ r.call }}">No reliable call</span>{% else %}<span class="pill {{ r.call }}">{% if r.call == "R" %}Resistant{% else %}Susceptible{% endif %}</span>{% endif %}</td>
+        <td><div class="prob"><div class="track"><div class="fill" style="width:{{ r.pct }}%"></div><i class="cut" title="Threshold 0.5"></i></div><span>{{ r.probability|floatformat:2 }}</span></div></td>
+        <td class="why">{% for c in r.contributions %}<div><span class="w">{{ c.id }}</span> {% if c.weight > 0 %}+{% endif %}{{ c.weight|floatformat:2 }}{% if not c.own_gene %} <span class="other">(other drug's gene)</span>{% endif %}</div>{% empty %}<span class="muted">none</span>{% endfor %}</td>
+        <td>{% if r.reliable %}<span class="pill ok" title="AUC {{ r.metrics.auc }}; unseen labs {{ r.metrics.unseen_lab_balanced_accuracy }}">Good · AUC {{ r.metrics.auc|floatformat:2 }}</span>{% else %}<span class="pill warn" title="Near chance on laboratories the model never saw">Low · AUC {{ r.metrics.auc|floatformat:2 }}</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="notice">Weights are log-odds from the logistic regression. A mutation in another drug's gene can push a call up only because it marks multidrug-resistant strains (co-resistance), not because it causes resistance. For linezolid, bedaquiline, clofazimine and delamanid the page gives no call: with only 67–103 resistant isolates per drug, the model is close to chance on laboratories it never saw, and its baseline sits near the 0.5 threshold even with no mutations.</p>
+</section>
+{% endif %}
+
+<script>
+(function () {
+  var add = document.getElementById("add"), picker = document.getElementById("picker"), ta = document.getElementById("mutations");
+  function push() {
+    var v = picker.value.trim(); if (!v) return;
+    ta.value = ta.value.trim() ? ta.value.trim().replace(/,\s*$/, "") + ", " + v : v;
+    picker.value = ""; picker.focus();
+  }
+  add.addEventListener("click", push);
+  picker.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); push(); } });
+})();
+</script>
+{% endblock %}
